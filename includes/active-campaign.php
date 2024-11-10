@@ -21,22 +21,27 @@ function enroll_in_learndash_course( $entry, $form ) {
     // Create username using firstname and lastname in form 
     $username = $first_name . $last_name ;
 
+    // Set userdata
+    $userdata = array(
+        'user_login'    => $username, 
+        'user_pass'     => $password,  
+        'user_email'    => $email, 
+        'first_name'    => $first_name,
+        'last_name'     => $last_name,
+        'role'          => 'subscriber' // You can set roles like 'administrator', 'editor', 'author', etc.
+    );
+
     // Register the user in wordpress
-    $wp_user_id = create_new_user($username, $password, $email, $first_name, $last_name);
+    $wp_user_id = wp_insert_user($userdata);
+
+    if (is_wp_error($wp_user_id)) {
+        do_action( 'qm/debug', "Error creating wordpress user" );
+    }else{
+        // enroll user in coure
+        enroll_user_in_course($wp_user_id,$course_id);
+    }
     
     
-    enroll_user_in_course($course_id);
-
-
-    // Log debug information
-    do_action( 'qm/debug', "Course ID -> " . $course_id );
-    do_action( 'qm/debug', "Course Name -> " . $course_name );
-    do_action( 'qm/debug', "Active Campaign Tag -> " . $ac_tag );
-    do_action( 'qm/debug', "First Name -> " . $first_name );
-    do_action( 'qm/debug', "Last Name -> " . $last_name );
-    do_action( 'qm/debug', "Email -> " . $email );
-
-
 
     // Only proceed if required values are set
     if ( $email && $ac_tag && $course_name && $first_name && $last_name ) {
@@ -54,9 +59,8 @@ function enroll_in_learndash_course( $entry, $form ) {
         // Log the response for debugging
         if ( is_wp_error( $response ) ) {
             do_action( 'qm/debug', "Webhook Error: " . $response->get_error_message() );
-        } else {
-            do_action( 'qm/debug', "Webhook Response: " . wp_remote_retrieve_body( $response ) );
         }
+
     } else {
         do_action( 'qm/debug', "Missing required fields for webhook." );
     }
@@ -89,27 +93,3 @@ function enroll_user_in_course( $user_id, $course_id ) {
     return true;
 }
 
-
-function create_new_user($username, $password, $email, $first_name, $last_name) {
-    // Define user data
-    $userdata = array(
-        'user_login'    => $username, 
-        'user_pass'     => $password,  
-        'user_email'    => $email, 
-        'first_name'    => $first_name,
-        'last_name'     => $last_name,
-        'role'          => 'subscriber' // You can set roles like 'administrator', 'editor', 'author', etc.
-    );
-
-    // Insert the user and get the user ID
-    $user_id = wp_insert_user($userdata);
-
-    // Check for errors
-    if (is_wp_error($user_id)) {
-        // Return error message if user creation fails
-        return $user_id-> get_error_message();
-    }
-
-    // Return the new user ID
-    return $user_id;
-}
