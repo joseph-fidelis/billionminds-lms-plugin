@@ -4,6 +4,8 @@
 
 // Add hook to process submissions for form with id 59
 add_action( 'gform_after_submission_59', 'enroll_in_learndash_course', 10, 2 );
+
+// Add filter to enable password field
 add_filter( 'gform_enable_password_field', '__return_true' );
 
 function enroll_in_learndash_course( $entry, $form ) {
@@ -95,27 +97,3 @@ function enroll_user_in_course( $user_id, $course_id ) {
         
     return true;
 }
-
-// function send_credentials_to_user($email, $password, $first_name, $course_name){
-
-//      // Only proceed if required values are set
-//      if ( $email && $course_name && $first_name && $password ) {
-//         // Construct the webhook URL with the form values
-//         $webhook_url = "https://hook.us1.make.com/mt9xqq5nm04p4jgo9kt08ocpdnnjmw0x";
-//         $webhook_url .= "?email=" . urlencode( $email );
-//         $webhook_url .= "&course_name=" . urlencode( $course_name );
-//         $webhook_url .= "&first_name=" . urlencode( $first_name );
-//         $webhook_url .= "&last_name=" . urlencode( $last_name );
-
-//         // Send the data to the webhook URL
-//         $response = wp_remote_get( $webhook_url );
-
-//         // Log the response for debugging
-//         if ( is_wp_error( $response ) ) {
-//             do_action( 'qm/debug', "Webhook Error: " . $response->get_error_message() );
-//         }
-
-//     } else {
-//         do_action( 'qm/debug', "Missing required fields for webhook." );
-//     }
-// }
