@@ -1,9 +1,6 @@
 <?php
-// Use this to automate all form submissions 
-// add_action( 'gform_after_submission', 'after_submission', 10, 2 );
-
-// Add hook to process submissions for form with id 59
-add_action( 'gform_after_submission_59', 'enroll_in_learndash_course', 10, 2 );
+// Add hook to process submissions for form with id 59 change later 
+add_action( 'gform_after_submission_1000', 'enroll_in_learndash_course', 10, 2 );
 
 // Add filter to enable password field
 add_filter( 'gform_enable_password_field', '__return_true' );
@@ -75,7 +72,6 @@ function enroll_in_learndash_course( $entry, $form ) {
 // Enroll user in learndash 
 function enroll_user_in_course( $user_id, $course_id ) {
 
-    // $user_id = get_current_user_id();    
 
     // Ensure both $user_id and $course_id are valid
     if ( ! $user_id || ! $course_id ) {
