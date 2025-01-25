@@ -107,6 +107,19 @@ add_action('rest_api_init', function () {
 });
 
 
+/**
+ * REST API to return all WP user.
+ * Paginated
+ */
+add_action('rest_api_init', function () {
+    register_rest_route('billionminds/v1', '/users-course', array(
+        'methods'  => 'GET',
+        'callback' => 'get_all_course_users',
+        'permission_callback' => '__return_true', // For testing; secure as needed
+    ));
+});
+
+
 
 
  /**
@@ -198,7 +211,7 @@ function check_lesson_not_complete($data) {
         return new WP_Error('missing_parameters', 'Course ID and Lesson ID are required.', array('status' => 400));
     }
 
-    $users = get_users();
+    $users = get_all_course_users($course_id);
     $completed_users = array();
 
     foreach ($users as $user) {
@@ -245,7 +258,7 @@ function check_lesson_not_complete($data) {
         return new WP_Error('missing_parameters', 'AC Tag ID required.', array('status' => 400));
     }
 
-    $users = get_users();
+    $users = get_all_course_users($course_id);
     $completed_users = array();
     $users_with_empty_credentials = array();
 
@@ -284,13 +297,11 @@ function check_lesson_not_complete($data) {
         }
     }
 
-    
-
     // STEP 3: Assign Certificate. 
     if(empty($users_with_empty_credentials)){
         return array(
             "code" => 200, 
-            "message" => "empty user list to assign credentials." 
+            "message" => "no users to assign credentials." 
         );
     }
     
@@ -307,7 +318,7 @@ function check_lesson_not_complete($data) {
         $tag_id = $tag_id;
         $response = add_activecampaign_tag($email, $tag_id);
     }
-    
+
     return $users_with_empty_credentials;
 }
 
@@ -353,7 +364,7 @@ function check_quiz_not_complete($data) {
         return new WP_Error('missing_parameters', 'Course ID and Quiz ID are required.', array('status' => 400));
     }
 
-    $users = get_users();
+    $users = get_all_course_users($course_id);
     $completed_users = array();
 
     foreach ($users as $user) {
@@ -386,6 +397,8 @@ function check_quiz_not_complete($data) {
     $quiz_id = $data['quiz_id'];
     $course_id = $data['course_id'];
     $group_id = $data['group_id'];
+    $tag_id = $data['tag_id'];
+
 
     if (!$course_id || !$quiz_id) {
         return new WP_Error('missing_parameters', 'Course ID and Quiz ID are required.', array('status' => 400));
@@ -395,10 +408,15 @@ function check_quiz_not_complete($data) {
         return new WP_Error('missing_parameters', 'Group ID required.', array('status' => 400));
     }
 
-    $users = get_users();
+    if (!$tag_id) {
+        return new WP_Error('missing_parameters', 'AC Tag ID required.', array('status' => 400));
+    }
+
+    $users = get_all_course_users($course_id);
     $completed_users = array();
     $users_with_empty_credentials = array();
 
+    // STEP 1: Get all the users that has completed the quiz.
     foreach ($users as $user) {
         $user_id = $user->ID;
         $is_quiz_complete = learndash_is_quiz_complete($user_id, $quiz_id, $course_id);
@@ -415,6 +433,7 @@ function check_quiz_not_complete($data) {
         }
     }
 
+    // STEP 2: Check all the users that has completed the quiz but have no certificate.
     foreach ($completed_users as $user) {
         $email = $user['email'];
         $credentials = is_accredible_credentials_exist($email, $group_id);
@@ -430,6 +449,28 @@ function check_quiz_not_complete($data) {
                 'group_id'   => $group_id,
             );
         }
+    }
+
+    // STEP 3: Assign Certificate.
+    if(empty($users_with_empty_credentials)){
+        return array(
+            "code" => 200, 
+            "message" => "no users to assign credentials." 
+        );
+    }
+
+    foreach($users_with_empty_credentials as $user){
+        $email = $user['email'];
+        $group_id = $user['group_id'];
+        $name = $user['first_name'] . ' ' . $user['last_name'];
+        $response = create_accredible_credentials($email, $group_id, $name);
+    }
+
+    // STEP 4: Add tag to AC
+    foreach($users_with_empty_credentials as $user){
+        $email = $user['email'];
+        $tag_id = $tag_id;
+        $response = add_activecampaign_tag($email, $tag_id);
     }
 
     return $users_with_empty_credentials;
@@ -457,6 +498,36 @@ function get_all_users() {
     return $user_data;
 }
 
+
+/**
+ * Get all users with the role 'subscriber' and paginate the results.
+ * @param WP_REST_Request $request The REST request.
+ * @return array The paginated user data.
+ */
+function get_all_course_users($request) {
+    $course_id = $request['course_id'];
+    $user_data = array();
+    
+    if (!$course_id) {
+        return new WP_Error('missing_parameters', 'Course ID is required.', array('status' => 400));
+    }
+
+    $all_users = learndash_get_course_users_access_from_meta($course_id);
+
+
+
+    foreach ($all_users as $user_id) {
+        $user = get_userdata($user_id);
+    
+        $user_data[] = array(
+            'user_id' => $user->ID,
+            'email'   => $user->user_email,
+            'first_name' => $user->first_name,
+            'last_name'  => $user->last_name,
+        );
+    }
+    return $user_data;
+}
 
 /**
  * Check if Accredible credentials exist.
@@ -592,4 +663,125 @@ function get_activecampaign_contact_id($email) {
     }
 
     return $data['contacts'][0]['id'];
+}
+
+////////  Helper Endpoints /////////
+
+/**
+ * REST API to return Active Campaigne Tag ID.
+ * 
+ */
+
+ add_action('rest_api_init', function () {
+    register_rest_route('billionminds/v1', '/ac-tag', array(
+        'methods'  => 'GET',
+        'callback' => 'active_campaign_tag_id',
+        'permission_callback' => '__return_true', // For testing; secure as needed
+    ));
+});
+
+/**
+ * REST API to return Accredible Group ID.
+ * 
+ */
+
+ add_action('rest_api_init', function () {
+    register_rest_route('billionminds/v1', '/accredible-group-id', array(
+        'methods'  => 'GET',
+        'callback' => 'accredible_group_id',
+        'permission_callback' => '__return_true', // For testing; secure as needed
+    ));
+});
+
+
+/**
+ * REST API to return Lesson ID.
+ * 
+ */
+
+ add_action('rest_api_init', function () {
+    register_rest_route('billionminds/v1', '/accredible-credentials', array(
+        'methods'  => 'GET',
+        'callback' => 'accridible_credentials',
+        'permission_callback' => '__return_true', // For testing; secure as needed
+    ));
+});
+
+
+
+/**
+ * Get Active Campaign Tag ID.
+ * @return array The response data.
+ */
+
+function active_campaign_tag_id($data) {
+    $tag_name = $data['tag_name'];
+
+    if (!$tag_name) {
+        return new WP_Error('missing_parameters', 'AC Tag Name required.', array('status' => 400));
+    }
+
+    $url = ACTIVECAMPAIGN_API_URL . 'tags' . '?search=' . urlencode($tag_name);
+    $args = array(
+        'headers' => array(
+            'Api-Token' => ACTIVECAMPAIGN_API_KEY,
+        ),
+    );
+
+    $response = wp_remote_get($url, $args);
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $body = wp_remote_retrieve_body($response);
+    $response = json_decode($body, true);
+
+    if (empty($response['tags'])) {
+        return new WP_Error('tag_not_found', 'Tag not found.', array('status' => 404));
+    }
+
+    return array(
+        "tag_id" => $response['tags'][0]['id'],
+        "tag_name" => $response['tags'][0]['tag'],
+    );
+}
+
+/**
+ * Get Accredible Group ID.
+ * @return array The response data.
+ */
+
+function accredible_group_id($data) {
+    $group_name = $data['group_name'];
+
+    if (!$group_name) {
+        return new WP_Error('missing_parameters', 'Group Name required.', array('status' => 400));
+    }
+
+    $url = 'https://api.accredible.com/v1/issuer/all_groups' . '?name=' . urlencode($group_name);
+    $args = array(
+        'headers' => array(
+            'Authorization' => ACCREDIBLE_API_KEY, 
+        ),
+    );
+
+    $response = wp_remote_get($url, $args);
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $body = wp_remote_retrieve_body($response);
+    $response = json_decode($body, true);
+
+    if (empty($response['groups'])) {
+        return new WP_Error('group_not_found', 'Group not found.', array('status' => 404));
+    }
+
+    return array(
+        "group_id" => $response['groups'][0]['id'],
+        "group_name" => $response['groups'][0]['name'],
+        "course_name" => $response['groups'][0]['course_name'],
+    );
 }
