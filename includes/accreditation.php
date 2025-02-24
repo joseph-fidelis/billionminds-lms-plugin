@@ -211,19 +211,21 @@ function check_lesson_not_complete($data) {
         return new WP_Error('missing_parameters', 'Course ID and Lesson ID are required.', array('status' => 400));
     }
 
-    $users = get_all_course_users($course_id);
+    $enrolled_users = get_course_enrolled_user($course_id);
     $completed_users = array();
 
-    foreach ($users as $user) {
-        $user_id = $user->ID;
+    foreach ($enrolled_users as $user) {
+
+        $user_id = $user["user_id"];
+
         $is_lesson_complete = learndash_is_lesson_complete($user_id, $lesson_id, $course_id);
 
         if ($is_lesson_complete) {
             $completed_users[] = array(
                 'user_id'    => $user_id,
-                'email'      => $user->user_email,
-                'first_name' => $user->first_name,
-                'last_name'  => $user->last_name,
+                'email'      => $user["email"],
+                'first_name' => $user["first_name"],
+                'last_name'  => $user["last_name"],
                 'lesson_id'  => $lesson_id,
                 'is_lesson_completed' => $is_lesson_complete,
             );
@@ -231,7 +233,7 @@ function check_lesson_not_complete($data) {
     }
 
     return $completed_users;
-
+        
 }
 
 
@@ -258,21 +260,21 @@ function check_lesson_not_complete($data) {
         return new WP_Error('missing_parameters', 'AC Tag ID required.', array('status' => 400));
     }
 
-    $users = get_all_course_users($course_id);
+    $users = get_course_enrolled_user($course_id);
     $completed_users = array();
     $users_with_empty_credentials = array();
 
     // STEP 1: Get all the users that has completed the lesson.
     foreach ($users as $user) {
-        $user_id = $user->ID;
+        $user_id = $user['user_id'];
         $is_lesson_complete = learndash_is_lesson_complete($user_id, $lesson_id, $course_id);
 
         if ($is_lesson_complete) {
             $completed_users[] = array(
                 'user_id'    => $user_id,
-                'email'      => $user->user_email,
-                'first_name' => $user->first_name,
-                'last_name'  => $user->last_name,
+                'email'      => $user['email'],
+                'first_name' => $user['first_name'],
+                'last_name'  => $user['last_name'],
                 'lesson_id'  => $lesson_id,
                 'is_lesson_completed' => $is_lesson_complete,
             );
@@ -281,7 +283,9 @@ function check_lesson_not_complete($data) {
 
     // STEP 2: Check all the users that has completed the lesson but have no certificate.
     foreach ($completed_users as $user) {
+
         $email = $user['email'];
+        
         $credentials = is_accredible_credentials_exist($email, $group_id);
 
         if(empty($credentials)) {
@@ -309,17 +313,25 @@ function check_lesson_not_complete($data) {
         $email = $user['email'];
         $group_id = $user['group_id'];
         $name = $user['first_name'] . ' ' . $user['last_name'];
-        $response = create_accredible_credentials($email, $group_id, $name);
+
+        $accredible_response = create_accredible_credentials($email, $group_id, $name);
+        
     }
 
     // STEP 4: Add tag to AC
     foreach($users_with_empty_credentials as $user){
         $email = $user['email'];
         $tag_id = $tag_id;
-        $response = add_activecampaign_tag($email, $tag_id);
+        
+        $ac_response = add_activecampaign_tag($email, $tag_id);
+        // $response = add_activecampaign_tag($email, $tag_id);
     }
 
-    return $users_with_empty_credentials;
+    return array(
+        "accredited_users" => $users_with_empty_credentials,
+        "ac_response" => $ac_response,
+        "accredible_response" => $accredible_response,
+    );
 }
 
 
@@ -364,19 +376,19 @@ function check_quiz_not_complete($data) {
         return new WP_Error('missing_parameters', 'Course ID and Quiz ID are required.', array('status' => 400));
     }
 
-    $users = get_all_course_users($course_id);
+    $users = get_course_enrolled_user($course_id);
     $completed_users = array();
 
     foreach ($users as $user) {
-        $user_id = $user->ID;
+        $user_id = $user['user_id'];
         $is_quiz_complete = learndash_is_quiz_complete($user_id, $quiz_id, $course_id);
 
         if ($is_quiz_complete) {
             $completed_users[] = array(
                 'user_id'    => $user_id,
-                'email'      => $user->user_email,
-                'first_name' => $user->first_name,
-                'last_name'  => $user->last_name,
+                'email'      => $user['email'],
+                'first_name' => $user['first_name'],
+                'last_name'  => $user['last_name'],
                 'quiz_id'    => $quiz_id,
                 'is_quiz_completed' => $is_quiz_complete,
             );
@@ -412,21 +424,21 @@ function check_quiz_not_complete($data) {
         return new WP_Error('missing_parameters', 'AC Tag ID required.', array('status' => 400));
     }
 
-    $users = get_all_course_users($course_id);
+    $users = get_course_enrolled_user($course_id);
     $completed_users = array();
     $users_with_empty_credentials = array();
 
     // STEP 1: Get all the users that has completed the quiz.
     foreach ($users as $user) {
-        $user_id = $user->ID;
+        $user_id = $user['user_id'];
         $is_quiz_complete = learndash_is_quiz_complete($user_id, $quiz_id, $course_id);
 
         if ($is_quiz_complete) {
             $completed_users[] = array(
                 'user_id'    => $user_id,
-                'email'      => $user->user_email,
-                'first_name' => $user->first_name,
-                'last_name'  => $user->last_name,
+                'email'      => $user['email'],
+                'first_name' => $user['first_name'],
+                'last_name'  => $user['last_name'],
                 'quiz_id'    => $quiz_id,
                 'is_quiz_completed' => $is_quiz_complete,
             );
@@ -463,17 +475,25 @@ function check_quiz_not_complete($data) {
         $email = $user['email'];
         $group_id = $user['group_id'];
         $name = $user['first_name'] . ' ' . $user['last_name'];
-        $response = create_accredible_credentials($email, $group_id, $name);
+        
+        $accredible_response = create_accredible_credentials($email, $group_id, $name);
+        // $response = create_accredible_credentials($email, $group_id, $name);
     }
 
     // STEP 4: Add tag to AC
     foreach($users_with_empty_credentials as $user){
         $email = $user['email'];
         $tag_id = $tag_id;
-        $response = add_activecampaign_tag($email, $tag_id);
+        $ac_response = add_activecampaign_tag($email, $tag_id);
+        
+        
     }
 
-    return $users_with_empty_credentials;
+    return array(
+        "accredited_users" => $users_with_empty_credentials,
+        "ac_response" => $ac_response,
+        "accredible_response" => $accredible_response,
+    );
 }
 
 
@@ -517,6 +537,35 @@ function get_all_course_users($request) {
 
 
     foreach ($all_users as $user_id) {
+        $user = get_userdata($user_id);
+    
+        $user_data[] = array(
+            'user_id' => $user->ID,
+            'email'   => $user->user_email,
+            'first_name' => $user->first_name,
+            'last_name'  => $user->last_name,
+        );
+    }
+    return $user_data;
+}
+
+
+/**
+ * Get all users with the role 'subscriber' and paginate the results.
+ * @param WP_REST_Request $request The REST request.
+ * @return array The paginated user data.
+ */
+function get_course_enrolled_user($course_id) {
+    $user_data = array();
+    
+    if (!$course_id) {
+        return new WP_Error('missing_parameters', 'Course ID is required.', array('status' => 400));
+    }
+
+    $all_users = learndash_get_course_users_access_from_meta($course_id);
+
+    foreach ($all_users as $user_id) {
+
         $user = get_userdata($user_id);
     
         $user_data[] = array(

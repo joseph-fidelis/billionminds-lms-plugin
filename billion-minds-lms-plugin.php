@@ -8,7 +8,7 @@
  * Plugin Name: BillionMinds LMS  
  * Plugin URI:  https://billionminds.com
  * Description: Custom Plugin for billionminds.
- * Version:     0.0.4
+ * Version:     0.0.7
  * Author:      Fidelis Uwem Joseph 
  * Author URI:  https://github.com/joseph-fidelis
  * License:     GPL v3
@@ -22,10 +22,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Include other files
 require_once plugin_dir_path( __FILE__ ) . 'includes/admin-menu.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/database.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/settings.php';
-// require_once plugin_dir_path( __FILE__ ) . 'includes/generate-pdf.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/active-campaign.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/register_users.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/journal.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/accreditation.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/active-campaign-endpoints.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/learndash-endpoints.php';

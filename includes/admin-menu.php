@@ -28,5 +28,3 @@ function billionminds_lms_settings_page() {
     </div>
     <?php
 }
-// sthHkE3Ywtabrm9Z
-// mongodb+srv://joseph:sthHkE3Ywtabrm9Z@billionmind-lms.mt7me.mongodb.net/
