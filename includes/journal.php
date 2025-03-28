@@ -3,29 +3,39 @@ add_action('gform_after_submission', 'send_form_data_to_api', 10, 2);
 
 function send_form_data_to_api($entry, $form) {
     do_action( 'qm/debug', "Send Form Data Entry" );
-    // List of form IDs
-    $form_ids = [2, 1];
+    
+    // ? List of acceptable form IDs.
+    $form_ids = 
+    [
+        81, 82, 83,84,85,86,94,95,96,97,103,104,105,109,110,111
+
+    ];
 
     // Check if the form exist in list of acceptable forms 
     if (!in_array($form['id'], $form_ids)) {
         return;
     }
 
-    // Get the current user (subscriber) ID
+    // ? Get the current user (subscriber) ID
     $user_id = get_current_user_id();
-
-    // Get the course ID (assuming it's embedded in a LearnDash course)
-    $course_id = learndash_get_course_id(); // Ensure you are inside a LearnDash course page
+    $course_id = learndash_get_course_id(); 
     $entry_id = $entry['id'];
-    $labels = $entry["_labels"];
+    $course_name = $course_id ? get_the_title($course_id) : '';
 
+    if (is_singular('sfwd-lessons')) {
+        $lesson_id   = get_the_ID();
+        $lesson_name = get_the_title();
+    } else {
+        $lesson_id   = '';
+        $lesson_name = '';
+    }
+    
     $result = [];
 
- // Loop through fields to map labels to their corresponding answers
  foreach ($form['fields'] as $field) {
-    $field_id = $field->id; // Field ID
-    $field_label = $field->label; // Field label (question)
-    $field_value = rgar($entry, $field_id); // Get the field's value from the entry
+    $field_id = $field->id; 
+    $field_label = $field->label; 
+    $field_value = rgar($entry, $field_id);
 
     if (!empty($field_value)) {
         $result[] = [
@@ -37,11 +47,14 @@ function send_form_data_to_api($entry, $form) {
 
 // Data to send to the webhook
 $webhook_data = [
-    "user_id" => $user_id,
-    "course_id" => $course_id,
-    "form_id" => $form['id'],
-    "entry_id" => $entry_id,
-    "q_and_a" => $result,
+        "user_id" => $user_id,
+        "course_id"   => $course_id,
+        "course_name" => $course_name,
+        "lesson_id"   => $lesson_id,
+        "lesson_name" => $lesson_name,
+        "form_id"     => $form['id'],
+        "entry_id"    => $entry_id,
+        "exercises"     => $result,
 ];
 
 // Webhook URL
@@ -62,11 +75,5 @@ if (is_wp_error($response)) {
 } else {
     do_action('qm/debug', "Webhook Response -> " . wp_remote_retrieve_body($response));
 }
-    
-    do_action( 'qm/debug', "User ID -> " . $user_id );
-    do_action( 'qm/debug', "Course ID -> " . $course_id );
-    do_action( 'qm/debug', "Form ID -> " . $form['id'] );
-    do_action( 'qm/debug', "Entry ID -> " . $entry_id );
-    do_action( 'qm/debug', "Q&A -> " . json_encode($result) );
 
 }
